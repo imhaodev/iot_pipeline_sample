@@ -1,0 +1,131 @@
+services:
+  # --- Nền tảng Data ---
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.3.0
+    container_name: zookeeper
+    environment: { ZOOKEEPER_CLIENT_PORT: 2181 }
+
+  kafka:
+    image: confluentinc/cp-kafka:7.3.0
+    container_name: kafka
+    depends_on: [zookeeper]
+    ports: ["9092:9092"]
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:29092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+  cassandra:
+    image: cassandra:4.0
+    container_name: cassandra
+    ports: ["9042:9042"]
+    volumes: ["cassandra_data:/var/lib/cassandra"]
+
+  postgres_analytics:
+    image: postgres:14
+    container_name: postgres_analytics
+    ports: ["5432:5432"]
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: analytics_db
+    volumes: ["postgres_data:/var/lib/postgresql/data"]
+
+  # --- Hệ thống Spark ---
+  spark-master:
+    image: bitnami/spark:3.3
+    container_name: spark-master
+    command: >
+      /opt/bitnami/spark/sbin/start-master.sh -h spark-master
+    ports:
+      - "8080:8080" # Spark Master UI
+      - "7077:7077"
+    volumes:
+      - ./spark_apps:/opt/bitnami/spark/apps
+    environment:
+      - SPARK_MASTER_HOST=spark-master
+
+  spark-worker:
+    image: bitnami/spark:3.3
+    # container_name: spark-worker
+    command: >
+      /opt/bitnami/spark/sbin/start-worker.sh spark://spark-master:7077
+    depends_on: [spark-master]
+    volumes:
+      - ./spark_apps:/opt/bitnami/spark/apps
+    environment:
+      - SPARK_WORKER_MEMORY=2g
+
+  # --- Hệ thống Airflow ---
+  postgres_airflow:
+    image: postgres:13
+    container_name: postgres_airflow
+    environment:
+      - POSTGRES_USER=airflow
+      - POSTGRES_PASSWORD=airflow
+      - POSTGRES_DB=airflow
+    volumes: ["airflow_db_data:/var/lib/postgresql/data"]
+
+  airflow-init:
+    image: apache/airflow:2.5.0
+    container_name: airflow-init
+    depends_on: [postgres_airflow]
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres_airflow/airflow
+    command: ["bash", "-c", "airflow db init && airflow users create --role Admin --username admin --password admin --firstname airflow --lastname user --email admin@example.org"]
+
+  airflow-webserver:
+    # image: apache/airflow:2.5.0
+    build: 
+      context: ./airflow
+    container_name: airflow-webserver
+    restart: always
+    depends_on: [airflow-init]
+    ports: ["8081:8080"]
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./spark_apps:/opt/airflow/spark_apps # Chia sẻ code spark cho Airflow
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres_airflow/airflow
+      - AIRFLOW__WEBSERVER__SECRET_KEY=a_super_secret_key
+      - AIRFLOW_UID=${AIRFLOW_UID}
+      # - AIRFLOW_CONN_SPARK_DEFAULT=spark://spark-master:7077
+    command: ["airflow", "webserver"]
+
+  airflow-scheduler:
+    # image: apache/airflow:2.5.0
+    build: 
+      context: ./airflow
+    container_name: airflow-scheduler
+    restart: always
+    depends_on: [airflow-init]
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./spark_apps:/opt/airflow/spark_apps
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres_airflow/airflow
+      - AIRFLOW__WEBSERVER__SECRET_KEY=a_super_secret_key
+      - AIRFLOW_UID=${AIRFLOW_UID}
+      # - AIRFLOW_CONN_SPARK_DEFAULT=spark://spark-master:7077
+    command: ["airflow", "scheduler"]
+
+  metabase:
+    image: metabase/metabase:v0.46.6
+    container_name: metabase
+    ports:
+      - "3001:3000" # Truy cập Metabase qua cổng 3001 để không bị trùng
+    depends_on:
+      - postgres_analytics # Đảm bảo Postgres khởi động trước
+    volumes: # <-- THÊM MỤC NÀY
+      - metabase_data:/metabase.db
+
+volumes:
+  cassandra_data:
+  postgres_data:
+  airflow_db_data:
+  metabase_data:
