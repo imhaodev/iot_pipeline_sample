@@ -6,7 +6,28 @@ This document provides step-by-step instructions to launch and operate the IoT d
 
 - Docker
 - Docker Compose
-- Python 3 and pip (to run producer script)
+- Python 3.8+ and pip (to run producer script)
+- Git (for version control)
+
+## Project Setup
+
+### 1. Clone and Setup Environment
+
+```bash
+# Clone the repository (if using Git)
+git clone <repository-url>
+cd iot_pipeline
+
+# Install Python dependencies
+pip install -r requirements.txt
+```
+
+### 2. Environment Configuration
+
+The project includes:
+- `.gitignore` - Excludes unnecessary files from version control
+- `requirements.txt` - Lists all Python dependencies
+- `.env` - Environment variables (configure as needed)
 
 ## Step 1: Start the Entire System
 
@@ -41,8 +62,9 @@ You need to open 2 separate terminal windows.
 ### Terminal 1: Run Producer to Generate Data
 
 ```bash
-# Install libraries if needed
-pip install kafka-python
+# Dependencies are already installed from requirements.txt
+# If you haven't installed them yet, run:
+# pip install -r requirements.txt
 
 # Start sending data
 python producer/iot_producer.py
@@ -109,3 +131,35 @@ This window will print logs "Batch ... written to Cassandra". Raw data is being 
 
 - **Spark Master UI:** http://localhost:8080 (Monitor Spark jobs)
 - **Airflow UI:** http://localhost:8081 (Manage ETL workflows)
+
+## Project Structure
+
+```
+iot_pipeline/
+├── .gitignore              # Git ignore rules
+├── requirements.txt        # Python dependencies
+├── README.md              # This documentation
+├── docker-compose.yml     # Docker services configuration
+├── .env                   # Environment variables
+├── producer/
+│   └── iot_producer.py    # Kafka data producer
+├── spark_apps/
+│   ├── pyspark_streaming_to_cassandra.py  # Real-time processing
+│   └── etl_cassandra_to_postgres.py       # Batch ETL
+└── airflow/
+    ├── Dockerfile         # Airflow container setup
+    └── dags/             # Airflow DAG definitions
+```
+
+## Development Notes
+
+- All Python dependencies are managed in `requirements.txt`
+- The `.gitignore` file excludes logs, cache files, and sensitive data
+- Virtual environment `iot_venv/` is excluded from version control
+- Use `pip install -r requirements.txt` to install all dependencies
+
+## Troubleshooting
+
+- If containers fail to start, check Docker logs: `docker-compose logs <service-name>`
+- For Python dependency issues, ensure you're using Python 3.8+
+- If Kafka connection fails, verify all containers are running: `docker-compose ps`

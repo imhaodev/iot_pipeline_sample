@@ -1,0 +1,50 @@
+# Core Python libraries
+kafka-python==2.0.2
+
+# Apache Spark and PySpark
+pyspark==3.5.0
+
+# Database connectors
+psycopg2-binary==2.9.7
+cassandra-driver==3.28.0
+
+# Data processing and analysis
+pandas==2.1.1
+numpy==1.24.3
+
+# Apache Airflow (for workflow orchestration)
+apache-airflow==2.7.1
+apache-airflow-providers-postgres==5.6.0
+apache-airflow-providers-docker==3.7.2
+
+# Utilities
+python-dotenv==1.0.0
+requests==2.31.0
+
+# Development and testing
+pytest==7.4.2
+pytest-cov==4.1.0
+flake8==6.0.0
+black==23.7.0
+
+# Logging and monitoring
+loguru==0.7.2
+
+# Configuration management
+pyyaml==6.0.1
+toml==0.10.2
+
+# JSON handling (built-in but explicit version for compatibility)
+jsonschema==4.19.0
+
+# Time and date utilities
+python-dateutil==2.8.2
+pytz==2023.3
+
+# UUID generation (built-in but listed for clarity)
+# uuid - built-in Python module
+
+# Additional Spark connectors (JAR dependencies - install separately)
+# spark-cassandra-connector
+# postgresql JDBC driver
+# kafka-clients
